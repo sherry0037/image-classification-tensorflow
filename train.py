@@ -30,6 +30,8 @@ from tensorflow.python.framework import graph_util
 from tensorflow.python.framework import tensor_shape
 from tensorflow.python.platform import gfile
 from tensorflow.python.util import compat
+import time
+start_time = time.time()
 
 FLAGS = None
 
@@ -832,6 +834,7 @@ def main(_):
                 validation_writer.add_summary(validation_summary, i)
                 print('Step: %d, Train accuracy: %.4f%%, Cross entropy: %f, Validation accuracy: %.1f%% (N=%d)' % (i,
                         train_accuracy * 100, cross_entropy_value, validation_accuracy * 100, len(validation_bottlenecks)))
+                print("--- %s seconds ---" % (time.time() - start_time))
 
         # We've completed all our training, so run a final test evaluation on
         # some new images we haven't used before.
