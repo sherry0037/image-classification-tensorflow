@@ -75,7 +75,7 @@ def create_image_lists(image_dir, testing_percentage, validation_percentage):
         if is_root_dir:
             is_root_dir = False
             continue
-        extensions = ['jpg', 'jpeg', 'JPG', 'JPEG']
+        extensions = ['jpg', 'jpeg', 'JPG', 'JPEG', 'png']
         file_list = []
         dir_name = os.path.basename(sub_dir)
         if dir_name == image_dir:
@@ -121,12 +121,13 @@ def create_image_lists(image_dir, testing_percentage, validation_percentage):
                 testing_images.append(base_name)
             else:
                 training_images.append(base_name)
-        result[label_name] = {
-            'dir': dir_name,
-            'training': training_images,
-            'testing': testing_images,
-            'validation': validation_images,
-            }
+        if len(testing_images) and len(validation_images):
+            result[label_name] = {
+                'dir': dir_name,
+                'training': training_images,
+                'testing': testing_images,
+                'validation': validation_images,
+                }
     return result
 
 
@@ -538,7 +539,6 @@ def should_distort_images(flip_left_right, random_crop, random_scale,
 def add_input_distortions(flip_left_right, random_crop, random_scale,
                           random_brightness):
     """
-    Brief：
         Creates the operations to apply the specified distortions.
 
         During training it can help to improve the results if we run the images
@@ -548,7 +548,6 @@ def add_input_distortions(flip_left_right, random_crop, random_scale,
         parameters and construct a network of operations to apply them to an image.
 
       Cropping
-      ~~~~~~~~
 
       Cropping is done by placing a bounding box at a random position in the full
       image. The cropping parameter controls the size of that box relative to the
@@ -571,8 +570,6 @@ def add_input_distortions(flip_left_right, random_crop, random_scale,
         +---------------------+
 
       Scaling
-      ~~~~~~~
-
       Scaling is a lot like cropping, except that the bounding box is always
       centered and its size varies randomly within the given range. For example if
       the scale percentage is zero, then the bounding box is the same size as the
