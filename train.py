@@ -741,10 +741,15 @@ def add_final_training_ops(class_count, final_tensor_name, bottleneck_tensor):
             cross_entropy_mean = tf.reduce_mean(cross_entropy)
     tf.summary.scalar('cross_entropy', cross_entropy_mean)
 
+    with tf.name_scope('mean_squared_error'):
+        mse = tf.contrib.losses.mean_squared_error(logits, ground_truth_input)
+    tf.summary.scalar('mean_squared_error', mse)
+
     with tf.name_scope('train'):
         #optimizer = tf.train.GradientDescentOptimizer(FLAGS.learning_rate)
         optimizer = tf.train.AdamOptimizer(FLAGS.learning_rate)
-        train_step = optimizer.minimize(cross_entropy_mean)
+        #train_step = optimizer.minimize(cross_entropy_mean)
+        train_step = optimizer.minimize(mse)
 
     return (train_step, cross_entropy_mean, bottleneck_input, ground_truth_input,
               final_tensor)
