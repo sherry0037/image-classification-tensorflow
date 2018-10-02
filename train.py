@@ -742,7 +742,8 @@ def add_final_training_ops(class_count, final_tensor_name, bottleneck_tensor):
     tf.summary.scalar('cross_entropy', cross_entropy_mean)
 
     with tf.name_scope('train'):
-        optimizer = tf.train.GradientDescentOptimizer(FLAGS.learning_rate)
+        #optimizer = tf.train.GradientDescentOptimizer(FLAGS.learning_rate)
+        optimizer = tf.train.AdamOptimizer(FLAGS.learning_rate)
         train_step = optimizer.minimize(cross_entropy_mean)
 
     return (train_step, cross_entropy_mean, bottleneck_input, ground_truth_input,
@@ -815,15 +816,16 @@ def main(_):
                         bottleneck_tensor)
 
         # Add the new layer that we'll be training.
-        """"(train_step, cross_entropy, bottleneck_input, ground_truth_input,
+        (train_step, cross_entropy, bottleneck_input, ground_truth_input,
          final_tensor) = add_final_training_ops(len(image_lists.keys()),
                                             FLAGS.final_tensor_name,
                                             bottleneck_tensor)
-        """
-        (train_step, cross_entropy, bottleneck_input, ground_truth_input,
+
+        """"(train_step, cross_entropy, bottleneck_input, ground_truth_input,
          final_tensor) = restore_final_training_ops(len(image_lists.keys()),
                                                 FLAGS.final_tensor_name,
                                                 bottleneck_tensor)
+        """
 
         # Create the operations we need to evaluate the accuracy of our new layer.
         evaluation_step, prediction = add_evaluation_step(

@@ -23,6 +23,9 @@ with tf.gfile.FastGFile("logs/trained_graph.pb", 'rb') as f:
     graph_def.ParseFromString(f.read())
     _ = tf.import_graph_def(graph_def, name='')
 
+#for n in tf.get_default_graph().as_graph_def().node:
+#    print(n)
+
 with tf.Session() as sess:
     # Feed the image_data as input to the graph and get first prediction
     softmax_tensor = sess.graph.get_tensor_by_name('final_result:0')
