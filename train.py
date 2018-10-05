@@ -748,8 +748,8 @@ def add_final_training_ops(class_count, final_tensor_name, bottleneck_tensor):
     with tf.name_scope('train'):
         #optimizer = tf.train.GradientDescentOptimizer(FLAGS.learning_rate)
         optimizer = tf.train.AdamOptimizer(FLAGS.learning_rate)
-        #train_step = optimizer.minimize(cross_entropy_mean)
-        train_step = optimizer.minimize(mse)
+        train_step = optimizer.minimize(cross_entropy_mean)
+        #train_step = optimizer.minimize(mse)
 
     return (train_step, cross_entropy_mean, bottleneck_input, ground_truth_input,
               final_tensor)
@@ -849,6 +849,8 @@ def main(_):
         sess.run(init)
 
         # Run the training for as many cycles as requested on the command line.
+        early_stop_steps = FLAGS.early_stop_steps
+        best_validation_accuracy = 0
         for i in range(FLAGS.how_many_training_steps):
             # Get a batch of input bottleneck values, either calculated fresh every
             # time with distortions applied, or from the cache stored on disk.
@@ -892,9 +894,22 @@ def main(_):
                         feed_dict={bottleneck_input: validation_bottlenecks,
                                    ground_truth_input: validation_ground_truth})
                 validation_writer.add_summary(validation_summary, i)
+
+                if validation_accuracy > best_validation_accuracy:
+                    best_validation_accuracy = validation_accuracy
+                    early_stop_steps = FLAGS.early_stop_steps
+                else:
+                    early_stop_steps -= 1
+
+
                 print('Step: %d, Train accuracy: %.4f%%, Cross entropy: %f, Validation accuracy: %.1f%% (N=%d)' % (i,
                         train_accuracy * 100, cross_entropy_value, validation_accuracy * 100, len(validation_bottlenecks)))
                 print("--- %s seconds ---" % (time.time() - start_time))
+                if FLAGS.use_early_stop:
+                    if early_stop_steps < 1:
+                        print('Model has not improved for %d steps. Stop training...'%(FLAGS.early_stop_steps*FLAGS.eval_step_interval))
+                        print('Final training step: %d'%(i))
+                        break
 
         # We've completed all our training, so run a final test evaluation on
         # some new images we haven't used before.
@@ -1078,6 +1093,23 @@ if __name__ == '__main__':
         help="""\
         A percentage determining how much to randomly multiply the training image
         input pixels up or down by.\
+        """
+        )
+    parser.add_argument(
+        '--use_early_stop',
+        type=bool,
+        default=True,
+        help="""\
+        After certain steps, if eval accuracy is not improved, stop training.\
+        """
+        )
+    parser.add_argument(
+        '--early_stop_steps',
+        type=int,
+        default=20,
+        help="""\
+        After certain steps, if eval accuracy is not improved, stop training. This defines the number
+        of intervals.\
         """
         )
     FLAGS, unparsed = parser.parse_known_args()
