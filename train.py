@@ -778,6 +778,8 @@ def add_evaluation_step(result_tensor, ground_truth_tensor):
 
 
 def main(_):
+    with open(FLAGS.training_logs_dir, 'w') as f:
+        f.write('')
     # Setup the directory we'll write summaries to for TensorBoard
     if tf.gfile.Exists(FLAGS.summaries_dir):
         tf.gfile.DeleteRecursively(FLAGS.summaries_dir)
