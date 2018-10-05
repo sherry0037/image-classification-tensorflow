@@ -931,6 +931,9 @@ def main(_):
                            ground_truth_input: test_ground_truth})
         print('Final test accuracy = %.1f%% (N=%d)' % (
                 test_accuracy * 100, len(test_bottlenecks)))
+        with open(FLAGS.training_logs_dir, 'a') as f:
+            f.write('Final test accuracy = %.1f%% (N=%d)\n' % (
+                test_accuracy * 100, len(test_bottlenecks)))
 
         if FLAGS.print_misclassified_test_images:
             print('=== MISCLASSIFIED TEST IMAGES ===')
