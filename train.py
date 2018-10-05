@@ -912,11 +912,15 @@ def main(_):
                     if early_stop_steps < 1:
                         log_str.append('Model has not improved for %d steps. Stop training...\n'%(FLAGS.early_stop_steps*FLAGS.eval_step_interval))
                         log_str.append('Final training step: %d\n'%(i))
+                        print(''.join(log_str))
+                        with open(FLAGS.training_logs_dir, 'a') as f:
+                            f.write(''.join(log_str))
                         break
 
                 print(''.join(log_str))
                 with open(FLAGS.training_logs_dir, 'a') as f:
                     f.write(''.join(log_str))
+
 
         # We've completed all our training, so run a final test evaluation on
         # some new images we haven't used before.
