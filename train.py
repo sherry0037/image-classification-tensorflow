@@ -902,14 +902,19 @@ def main(_):
                     early_stop_steps -= 1
 
 
-                print('Step: %d, Train accuracy: %.4f%%, Cross entropy: %f, Validation accuracy: %.1f%% (N=%d)' % (i,
+                log_str = []
+                log_str.append('Step: %d, Train accuracy: %.4f%%, Cross entropy: %f, Validation accuracy: %.1f%% (N=%d)\n' % (i,
                         train_accuracy * 100, cross_entropy_value, validation_accuracy * 100, len(validation_bottlenecks)))
-                print("--- %s seconds ---" % (time.time() - start_time))
+                log_str.append("--- %s seconds ---\n" % (time.time() - start_time))
                 if FLAGS.use_early_stop:
                     if early_stop_steps < 1:
-                        print('Model has not improved for %d steps. Stop training...'%(FLAGS.early_stop_steps*FLAGS.eval_step_interval))
-                        print('Final training step: %d'%(i))
+                        log_str.append('Model has not improved for %d steps. Stop training...\n'%(FLAGS.early_stop_steps*FLAGS.eval_step_interval))
+                        log_str.append('Final training step: %d\n'%(i))
                         break
+
+                print(''.join(log_str))
+                with open(FLAGS.training_logs_dir, 'a') as f:
+                    f.write(''.join(log_str))
 
         # We've completed all our training, so run a final test evaluation on
         # some new images we haven't used before.
@@ -949,6 +954,12 @@ if __name__ == '__main__':
         type=str,
         default='',
         help='Path to folders of labeled images.'
+        )
+    parser.add_argument(
+        '--training_logs_dir',
+        type=str,
+        default='/tmp/training_logs.txt',
+        help='Path to store the training logs.'
         )
     parser.add_argument(
         '--output_graph',
