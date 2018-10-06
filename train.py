@@ -720,10 +720,13 @@ def add_final_training_ops(class_count, final_tensor_name, bottleneck_tensor):
         with tf.name_scope('weights'):
             initial_value = tf.truncated_normal([BOTTLENECK_TENSOR_SIZE, class_count],
                                           stddev=0.001)
-
             layer_weights = tf.Variable(initial_value, name='final_weights')
-
             variable_summaries(layer_weights)
+
+            if FLAGS.weight_decay:
+                weight_decay_loss = tf.nn.l2_loss(initial_value) * FLAGS.weight_decay
+                variable_summaries(weight_decay_loss)
+
         with tf.name_scope('biases'):
             layer_biases = tf.Variable(tf.zeros([class_count]), name='final_biases')
             variable_summaries(layer_biases)
@@ -734,24 +737,32 @@ def add_final_training_ops(class_count, final_tensor_name, bottleneck_tensor):
     final_tensor = tf.nn.softmax(logits, name=final_tensor_name)
     tf.summary.histogram('activations', final_tensor)
 
-    with tf.name_scope('cross_entropy'):
-        cross_entropy = tf.nn.softmax_cross_entropy_with_logits(
-                labels=ground_truth_input, logits=logits)
-        with tf.name_scope('total'):
-            cross_entropy_mean = tf.reduce_mean(cross_entropy)
-    tf.summary.scalar('cross_entropy', cross_entropy_mean)
 
-    with tf.name_scope('mean_squared_error'):
-        mse = tf.contrib.losses.mean_squared_error(logits, ground_truth_input)
-    tf.summary.scalar('mean_squared_error', mse)
+    if FLAGS.loss == 'cross_entropy_reg':
+        with tf.name_scope('cross_entropy_reg'):
+            cross_entropy = tf.nn.softmax_cross_entropy_with_logits(
+                    labels=ground_truth_input, logits=logits)
+            with tf.name_scope('total'):
+                total_loss = tf.reduce_mean(cross_entropy) + weight_decay_loss
+        tf.summary.scalar('cross_entropy_reg', total_loss)
+    elif FLAGS.loss == 'MSE':
+        with tf.name_scope('mean_squared_error'):
+            total_loss = tf.contrib.losses.mean_squared_error(logits, ground_truth_input)
+        tf.summary.scalar('mean_squared_error', total_loss)
+    else:
+        with tf.name_scope('cross_entropy'):
+            cross_entropy = tf.nn.softmax_cross_entropy_with_logits(
+                    labels=ground_truth_input, logits=logits)
+            with tf.name_scope('total'):
+                total_loss = tf.reduce_mean(cross_entropy)
+        tf.summary.scalar('cross_entropy', total_loss)
 
     with tf.name_scope('train'):
         #optimizer = tf.train.GradientDescentOptimizer(FLAGS.learning_rate)
         optimizer = tf.train.AdamOptimizer(FLAGS.learning_rate)
-        train_step = optimizer.minimize(cross_entropy_mean)
-        #train_step = optimizer.minimize(mse)
+        train_step = optimizer.minimize(total_loss)
 
-    return (train_step, cross_entropy_mean, bottleneck_input, ground_truth_input,
+    return (train_step, total_loss, bottleneck_input, ground_truth_input,
               final_tensor)
 
 
@@ -823,7 +834,7 @@ def main(_):
                         bottleneck_tensor)
 
         # Add the new layer that we'll be training.
-        (train_step, cross_entropy, bottleneck_input, ground_truth_input,
+        (train_step, total_loss, bottleneck_input, ground_truth_input,
          final_tensor) = add_final_training_ops(len(image_lists.keys()),
                                             FLAGS.final_tensor_name,
                                             bottleneck_tensor)
@@ -880,8 +891,8 @@ def main(_):
             # Every so often, print out how well the graph is training.
             is_last_step = (i + 1 == FLAGS.how_many_training_steps)
             if (i % FLAGS.eval_step_interval) == 0 or is_last_step:
-                train_accuracy, cross_entropy_value = sess.run(
-                        [evaluation_step, cross_entropy],
+                train_accuracy, total_loss_value = sess.run(
+                        [evaluation_step, total_loss],
                         feed_dict={bottleneck_input: train_bottlenecks,
                                    ground_truth_input: train_ground_truth})
                 validation_bottlenecks, validation_ground_truth, _ = (
@@ -905,8 +916,8 @@ def main(_):
 
 
                 log_str = []
-                log_str.append('Step: %d, Train accuracy: %.4f%%, Cross entropy: %f, Validation accuracy: %.1f%% (N=%d)\n' % (i,
-                        train_accuracy * 100, cross_entropy_value, validation_accuracy * 100, len(validation_bottlenecks)))
+                log_str.append('Step: %d, Train accuracy: %.4f%%, Loss: %f, Validation accuracy: %.1f%% (N=%d)\n' % (i,
+                        train_accuracy * 100, total_loss_value, validation_accuracy * 100, len(validation_bottlenecks)))
                 log_str.append("--- %s seconds ---\n" % (time.time() - start_time))
                 if FLAGS.use_early_stop:
                     if early_stop_steps < 1:
@@ -1132,5 +1143,21 @@ if __name__ == '__main__':
         of intervals.\
         """
         )
+    parser.add_argument(
+        '--loss',
+        type=str,
+        default="cross_entropy",
+        help="""\
+            loss type: cross_entropy, cross_entropy_reg, MSE\
+         """
+    )
+    parser.add_argument(
+        '--weight_decay',
+        type=float,
+        default=0.005,
+        help="""\
+            Regularization rate\
+            """
+    )
     FLAGS, unparsed = parser.parse_known_args()
     tf.app.run(main=main, argv=[sys.argv[0]] + unparsed)
