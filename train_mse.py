@@ -639,55 +639,6 @@ def variable_summaries(var):
         tf.summary.scalar('min', tf.reduce_min(var))
         tf.summary.histogram('histogram', var)
 
-def restore_final_training_ops(class_count, final_tensor_name, bottleneck_tensor):
-    model_filename = "logs/trained_graph.pb"
-    with gfile.FastGFile(model_filename, 'rb') as f:
-        graph_def = tf.GraphDef()
-        graph_def.ParseFromString(f.read())
-        layer_weights, layer_biases = (
-                tf.import_graph_def(graph_def, name='', return_elements=[
-                    'final_training_ops/weights/final_weights:0',
-                    'final_training_ops/biases/final_biases:0']))
-
-    with tf.name_scope('input'):
-        bottleneck_input = tf.placeholder_with_default(
-                bottleneck_tensor, shape=[None, BOTTLENECK_TENSOR_SIZE],
-                name='BottleneckInputPlaceholder')
-
-        ground_truth_input = tf.placeholder(tf.float32,
-                                        [None, class_count],
-                                        name='GroundTruthInput')
-    # Organizing the following ops as `final_training_ops` so they're easier
-    # to see in TensorBoard
-    layer_name = 'final_training_ops'
-    with tf.name_scope(layer_name):
-        with tf.name_scope('weights'):
-            layer_weights = tf.Variable(layer_weights, name='final_weights')
-            variable_summaries(layer_weights)
-        with tf.name_scope('biases'):
-            layer_biases = tf.Variable(layer_biases, name='final_biases')
-            variable_summaries(layer_biases)
-        with tf.name_scope('Wx_plus_b'):
-            logits = tf.matmul(bottleneck_input, layer_weights) + layer_biases
-            tf.summary.histogram('pre_activations', logits)
-
-    final_tensor = tf.nn.softmax(logits, name=final_tensor_name)
-    tf.summary.histogram('activations', final_tensor)
-
-    with tf.name_scope('cross_entropy'):
-        cross_entropy = tf.nn.softmax_cross_entropy_with_logits(
-            labels=ground_truth_input, logits=logits)
-        with tf.name_scope('total'):
-            cross_entropy_mean = tf.reduce_mean(cross_entropy)
-    tf.summary.scalar('cross_entropy', cross_entropy_mean)
-
-    with tf.name_scope('train'):
-        optimizer = tf.train.GradientDescentOptimizer(FLAGS.learning_rate)
-        train_step = optimizer.minimize(cross_entropy_mean)
-
-    return (train_step, cross_entropy_mean, bottleneck_input, ground_truth_input,
-              final_tensor)
-
 def add_final_training_ops(final_tensor_name, bottleneck_tensor):
     """
     Brief:
@@ -734,11 +685,12 @@ def add_final_training_ops(final_tensor_name, bottleneck_tensor):
             layer_biases = tf.Variable(tf.zeros([1]), name='final_biases')
             variable_summaries(layer_biases)
         with tf.name_scope('Wx_plus_b'):
-            logits = tf.matmul(bottleneck_input, layer_weights) + layer_biases
+            logits = tf.matmul(bottleneck_input, layer_weights)
+            logits = tf.add(logits, layer_biases)
             tf.summary.histogram('pre_activations', logits)
 
-    #final_tensor = tf.nn.softmax(logits, name=final_tensor_name)
-    #tf.summary.histogram('activations', final_tensor)
+    final_tensor = tf.add(tf.matmul(bottleneck_input, layer_weights), layer_biases, name=final_tensor_name)
+    tf.summary.histogram('activations', final_tensor)
 
     with tf.name_scope('mean_squared_error'):
         total_loss = tf.losses.mean_squared_error(logits, ground_truth_input)
@@ -749,7 +701,7 @@ def add_final_training_ops(final_tensor_name, bottleneck_tensor):
         train_step = optimizer.minimize(total_loss)
 
     return (train_step, total_loss, bottleneck_input, ground_truth_input,
-              logits)
+              final_tensor)
 
 
 def add_evaluation_step(predictions, ground_truth_tensor):
@@ -898,7 +850,7 @@ def main(_):
 
 
                 log_str = []
-                log_str.append('Step: %d, L1: %.4f, Loss: %f, Validation accuracy: %.1f (N=%d)\n' % (i,
+                log_str.append('Step: %d, Train L1: %.4f, MSE: %f, Validation L1: %.1f (N=%d)\n' % (i,
                         train_accuracy, total_loss_value, validation_accuracy, len(validation_bottlenecks)))
                 log_str.append("--- %s seconds ---\n" % (time.time() - start_time))
                 if FLAGS.use_early_stop:
@@ -928,10 +880,10 @@ def main(_):
                            ground_truth_input: test_ground_truth})
         print(predictions)
         print(test_ground_truth)
-        print('Final test accuracy = %.1f (N=%d)' % (
+        print('Final test L1 = %.1f (N=%d)' % (
                 test_accuracy, len(test_bottlenecks)))
         with open(FLAGS.training_logs_dir, 'a') as f:
-            f.write('Final test accuracy = %.1f (N=%d)\n' % (
+            f.write('Final test L1 = %.1f (N=%d)\n' % (
                 test_accuracy, len(test_bottlenecks)))
 
         if FLAGS.print_misclassified_test_images:
