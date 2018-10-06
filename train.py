@@ -737,7 +737,6 @@ def add_final_training_ops(class_count, final_tensor_name, bottleneck_tensor):
     final_tensor = tf.nn.softmax(logits, name=final_tensor_name)
     tf.summary.histogram('activations', final_tensor)
 
-
     if FLAGS.loss == 'cross_entropy_reg':
         with tf.name_scope('cross_entropy_reg'):
             cross_entropy = tf.nn.softmax_cross_entropy_with_logits(
@@ -759,7 +758,10 @@ def add_final_training_ops(class_count, final_tensor_name, bottleneck_tensor):
 
     with tf.name_scope('train'):
         #optimizer = tf.train.GradientDescentOptimizer(FLAGS.learning_rate)
-        optimizer = tf.train.AdamOptimizer(FLAGS.learning_rate)
+        if FLAGS.SGD:
+            optimizer = tf.train.GradientDescentOptimizer(FLAGS.learning_rate)
+        else:
+            optimizer = tf.train.AdamOptimizer(FLAGS.learning_rate)
         train_step = optimizer.minimize(total_loss)
 
     return (train_step, total_loss, bottleneck_input, ground_truth_input,
@@ -1157,6 +1159,14 @@ if __name__ == '__main__':
         default=0.005,
         help="""\
             Regularization rate\
+            """
+    )
+    parser.add_argument(
+        '--SGD',
+        type=bool,
+        default=False,
+        help="""\
+            Use SGD\
             """
     )
     FLAGS, unparsed = parser.parse_known_args()
