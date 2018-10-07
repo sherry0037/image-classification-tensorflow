@@ -763,7 +763,7 @@ def add_loss_and_train(logits, ground_truth_input, ground_truth_number):
             mse = tf.losses.mean_squared_error(predicted_class, ground_truth_number)
             tf.summary.scalar('mse', mse)
         with tf.name_scope('total'):
-            total_loss = tf.reduce_mean(cross_entropy) + FLAGS.mse_ratio * mse
+            total_loss = FLAGS.ce_ratio * tf.reduce_mean(cross_entropy) + FLAGS.mse_ratio * mse
     tf.summary.scalar('cross_entropy', total_loss)
 
     with tf.name_scope('train'):
@@ -1213,6 +1213,14 @@ if __name__ == '__main__':
         default=0.001,
         help="""\
             loss = mse_ratio * mse + cross_entropy\
+            """
+    )
+    parser.add_argument(
+        '--ce_ratio',
+        type=float,
+        default=0.999,
+        help="""\
+            loss = mse_ratio * mse + ce_ratio * cross_entropy\
             """
     )
     FLAGS, unparsed = parser.parse_known_args()
