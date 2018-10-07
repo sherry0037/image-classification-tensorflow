@@ -891,7 +891,7 @@ def main(_):
             class_predictions = sess.run(final_tensor, feed_dict={
                 bottleneck_input: train_bottlenecks,
                 ground_truth_input: train_ground_truth})
-            class_id = class_predictions[0].argsort()[-len(class_predictions[0]):][0]
+            class_id = class_predictions[0].argsort()[-len(class_predictions[0]):][::-1][0]
             train_class = LABEL_LINES[class_id][4:]
             train_class = np.asarray(int(train_class))
 
@@ -921,7 +921,7 @@ def main(_):
                 class_predictions = sess.run(final_tensor, feed_dict={
                     bottleneck_input: validation_bottlenecks,
                     ground_truth_input: validation_ground_truth})
-                class_id = class_predictions[0].argsort()[-len(class_predictions[0]):][0]
+                class_id = class_predictions[0].argsort()[-len(class_predictions[0]):][::-1][0]
                 validation_class = LABEL_LINES[class_id][4:]
                 validation_class = np.asarray(int(validation_class))
                 # Run a validation step and capture training summaries for TensorBoard
@@ -973,7 +973,7 @@ def main(_):
         class_predictions = sess.run(final_tensor, feed_dict={
             bottleneck_input: test_bottlenecks,
             ground_truth_input: test_ground_truth})
-        class_id = class_predictions[0].argsort()[-len(class_predictions[0]):][0]
+        class_id = class_predictions[0].argsort()[-len(class_predictions[0]):][::-1][0]
         test_class = LABEL_LINES[class_id][4:]
         test_class = np.asarray(int(test_class))
         test_accuracy, predictions = sess.run(
