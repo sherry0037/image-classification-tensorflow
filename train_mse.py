@@ -884,8 +884,7 @@ def main(_):
                 [evaluation_step, prediction],
                 feed_dict={bottleneck_input: test_bottlenecks,
                            ground_truth_input: test_ground_truth})
-        print(predictions)
-        print(test_ground_truth)
+
         print('Final test L1 = %.1f (N=%d)' % (
                 test_accuracy, len(test_bottlenecks)))
         with open(FLAGS.training_logs_dir, 'a') as f:
