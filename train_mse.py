@@ -49,6 +49,8 @@ MODEL_INPUT_DEPTH = 3
 JPEG_DATA_TENSOR_NAME = 'DecodeJpeg/contents:0'
 RESIZED_INPUT_TENSOR_NAME = 'ResizeBilinear:0'
 MAX_NUM_IMAGES_PER_CLASS = 2 ** 27 - 1  # ~134M
+LABEL_LINES = [line.rstrip() for line
+                   in tf.gfile.GFile("trained_labels.txt")]
 
 
 def create_image_lists(image_dir, testing_percentage, validation_percentage):
@@ -697,7 +699,11 @@ def add_final_training_ops(final_tensor_name, bottleneck_tensor):
     tf.summary.scalar('mean_squared_error', total_loss)
 
     with tf.name_scope('train'):
-        optimizer = tf.train.AdamOptimizer(FLAGS.learning_rate)
+        if FLAGS.SGD:
+            optimizer = tf.train.GradientDescentOptimizer(FLAGS.learning_rate)
+        else:
+            optimizer = tf.train.AdamOptimizer(FLAGS.learning_rate)
+        #optimizer = tf.train.AdamOptimizer(FLAGS.learning_rate)
         train_step = optimizer.minimize(total_loss)
 
     return (train_step, total_loss, bottleneck_input, ground_truth_input,
@@ -1093,6 +1099,14 @@ if __name__ == '__main__':
         default=0.005,
         help="""\
             Regularization rate\
+            """
+    )
+    parser.add_argument(
+        '--SGD',
+        type=bool,
+        default=False,
+        help="""\
+            Use SGD\
             """
     )
     FLAGS, unparsed = parser.parse_known_args()
