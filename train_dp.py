@@ -727,11 +727,11 @@ def add_final_training_ops(class_count, final_tensor_name, bottleneck_tensor):
             priv_accountant,
             [3.0 / 100, True])
         train_step = dp_optimizer.DPGradientDescentOptimizer(
-            0.05,
-            [4.0, 1e-5],
+            FLAGS.learning_rate,
+            [FLAGS.eps, 1e-5],
             gaussian_sanitizer,
             sigma=0.0,
-            batches_per_lot=200).minimize(
+            batches_per_lot=10).minimize(
             total_loss, global_step=global_step)
         #train_step = optimizer.minimize(total_loss)
 
@@ -1132,6 +1132,14 @@ if __name__ == '__main__':
         default=False,
         help="""\
             Use SGD\
+            """
+    )
+    parser.add_argument(
+        '--eps',
+        type=float,
+        default=2.0,
+        help="""\
+            Epsilon
             """
     )
     FLAGS, unparsed = parser.parse_known_args()
